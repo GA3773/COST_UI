@@ -110,8 +110,13 @@ class AnalyzerService:
     ) -> Dict:
         """Analyze a single instance group"""
         instance_type = group['instance_type']
-        instance_count = group['running_count']
         ec2_instances = group.get('ec2_instances', [])
+
+        # For terminated clusters, running_count may be 0
+        # Use the number of EC2 instances found, or requested_count as fallback
+        instance_count = group['running_count']
+        if instance_count == 0:
+            instance_count = len(ec2_instances) or group.get('requested_count', 0)
 
         # Get instance specifications
         instance_specs = self.pricing_service.get_instance_specs(instance_type)
