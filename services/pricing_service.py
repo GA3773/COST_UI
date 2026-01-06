@@ -305,6 +305,64 @@ class PricingService:
             'recommended_hourly_cost': round(recommended_price * instance_count, 4)
         }
 
+    def find_cheaper_alternative(
+        self,
+        current_instance_type: str,
+        min_vcpus: int,
+        min_memory_gb: float
+    ) -> dict:
+        """
+        Find a cheaper instance with same or better specs.
+        This is useful for finding alternatives like r6g.4xlarge instead of r7g.4xlarge
+        (same size, older generation, cheaper).
+        """
+        current_specs = self.get_instance_specs(current_instance_type)
+        if not current_specs:
+            return None
+
+        current_price = current_specs['price']
+        current_category = current_specs['category']
+
+        # Find all instances that meet the minimum requirements
+        # and are in the same category (memory-optimized, compute-optimized, etc.)
+        candidates = []
+        for instance_type, specs in self.instance_data.items():
+            if instance_type == current_instance_type:
+                continue
+
+            # Must meet minimum specs
+            if specs['vcpus'] < min_vcpus or specs['memory_gb'] < min_memory_gb:
+                continue
+
+            # Prefer same category for compatibility
+            if specs['category'] != current_category:
+                continue
+
+            # Must be cheaper
+            if specs['price'] >= current_price:
+                continue
+
+            # Calculate how close the specs are to requirements
+            # Prefer instances that are closest to the requirements (not oversized)
+            vcpu_ratio = specs['vcpus'] / min_vcpus
+            mem_ratio = specs['memory_gb'] / min_memory_gb
+
+            candidates.append({
+                'type': instance_type,
+                **specs,
+                'vcpu_ratio': vcpu_ratio,
+                'mem_ratio': mem_ratio,
+                'savings': current_price - specs['price']
+            })
+
+        if not candidates:
+            return None
+
+        # Sort by savings (highest first), then by how close to required specs
+        candidates.sort(key=lambda x: (-x['savings'], x['vcpu_ratio'] + x['mem_ratio']))
+
+        return candidates[0] if candidates else None
+
     def get_all_families(self) -> list:
         """Get list of all instance families"""
         return list(set(v['family'] for v in self.instance_data.values()))

@@ -362,44 +362,88 @@ class AnalyzerService:
             'required_vcpus': round(required_vcpus, 1),
             'required_memory_gb': round(required_memory, 1),
             'same_family': None,
+            'same_family_note': None,
             'cross_family': None,
             'category_optimized': None,
+            'cheaper_alternative': None,
             'best_recommendation': None
         }
 
-        # Process same-family recommendation
-        if suitable['same_family'] and suitable['same_family']['type'] != current_instance_type:
-            rec = suitable['same_family']
-            savings = self.pricing_service.calculate_savings(
-                current_instance_type,
-                rec['type'],
-                instance_count
-            )
-            recommendations['same_family'] = {
-                'instance_type': rec['type'],
-                'vcpus': rec['vcpus'],
-                'memory_gb': rec['memory_gb'],
-                'price_per_hour': rec['price'],
-                'savings': savings
-            }
+        current_family = current_specs.get('family')
+        current_price = current_specs.get('price', 0)
 
-        # Process cross-family recommendation
-        if suitable['cross_family'] and suitable['cross_family']['type'] != current_instance_type:
+        # Process same-family recommendation
+        if suitable['same_family']:
+            rec = suitable['same_family']
+            if rec['type'] != current_instance_type:
+                # Found a smaller instance in the same family
+                savings = self.pricing_service.calculate_savings(
+                    current_instance_type,
+                    rec['type'],
+                    instance_count
+                )
+                recommendations['same_family'] = {
+                    'instance_type': rec['type'],
+                    'vcpus': rec['vcpus'],
+                    'memory_gb': rec['memory_gb'],
+                    'price_per_hour': rec['price'],
+                    'savings': savings
+                }
+            else:
+                # The smallest suitable instance IS the current instance
+                # No smaller option available in the same family
+                recommendations['same_family_note'] = (
+                    f"No smaller {current_family} instance can meet the "
+                    f"required {round(required_memory, 1)} GB memory with {config.HEADROOM_PERCENT}% headroom. "
+                    f"Current size is optimal for this family."
+                )
+
+        # Process cross-family recommendation - look for CHEAPER alternatives
+        # This could be same size but cheaper family, or smaller in different family
+        if suitable['cross_family']:
             rec = suitable['cross_family']
+            if rec['type'] != current_instance_type:
+                savings = self.pricing_service.calculate_savings(
+                    current_instance_type,
+                    rec['type'],
+                    instance_count
+                )
+                # Only recommend if there are actual savings
+                if savings and savings['hourly_savings'] > 0:
+                    recommendations['cross_family'] = {
+                        'instance_type': rec['type'],
+                        'vcpus': rec['vcpus'],
+                        'memory_gb': rec['memory_gb'],
+                        'price_per_hour': rec['price'],
+                        'family': rec['family'],
+                        'category': rec['category'],
+                        'savings': savings
+                    }
+
+        # Look for cheaper alternatives at SAME OR SIMILAR specs
+        # This handles cases like r7g.4xlarge -> r6g.4xlarge (same size, older gen, cheaper)
+        cheaper_same_size = self.pricing_service.find_cheaper_alternative(
+            current_instance_type,
+            current_specs['vcpus'],
+            current_specs['memory_gb']
+        )
+        if cheaper_same_size and cheaper_same_size['type'] != current_instance_type:
             savings = self.pricing_service.calculate_savings(
                 current_instance_type,
-                rec['type'],
+                cheaper_same_size['type'],
                 instance_count
             )
-            recommendations['cross_family'] = {
-                'instance_type': rec['type'],
-                'vcpus': rec['vcpus'],
-                'memory_gb': rec['memory_gb'],
-                'price_per_hour': rec['price'],
-                'family': rec['family'],
-                'category': rec['category'],
-                'savings': savings
-            }
+            if savings and savings['hourly_savings'] > 0:
+                recommendations['cheaper_alternative'] = {
+                    'instance_type': cheaper_same_size['type'],
+                    'vcpus': cheaper_same_size['vcpus'],
+                    'memory_gb': cheaper_same_size['memory_gb'],
+                    'price_per_hour': cheaper_same_size['price'],
+                    'family': cheaper_same_size['family'],
+                    'category': cheaper_same_size['category'],
+                    'savings': savings,
+                    'note': 'Same specs, different family - potential cost savings'
+                }
 
         # Process category-optimized recommendation
         if (suitable['category_optimized'] and
@@ -411,21 +455,22 @@ class AnalyzerService:
                 rec['type'],
                 instance_count
             )
-            recommendations['category_optimized'] = {
-                'instance_type': rec['type'],
-                'vcpus': rec['vcpus'],
-                'memory_gb': rec['memory_gb'],
-                'price_per_hour': rec['price'],
-                'family': rec['family'],
-                'category': rec['category'],
-                'workload_profile': workload_profile,
-                'savings': savings
-            }
+            if savings and savings['hourly_savings'] > 0:
+                recommendations['category_optimized'] = {
+                    'instance_type': rec['type'],
+                    'vcpus': rec['vcpus'],
+                    'memory_gb': rec['memory_gb'],
+                    'price_per_hour': rec['price'],
+                    'family': rec['family'],
+                    'category': rec['category'],
+                    'workload_profile': workload_profile,
+                    'savings': savings
+                }
 
         # Determine best recommendation (highest savings)
         best = None
         best_savings = 0
-        for key in ['same_family', 'cross_family', 'category_optimized']:
+        for key in ['same_family', 'cross_family', 'category_optimized', 'cheaper_alternative']:
             rec = recommendations.get(key)
             if rec and rec.get('savings'):
                 if rec['savings']['hourly_savings'] > best_savings:
@@ -433,6 +478,20 @@ class AnalyzerService:
                     best_savings = rec['savings']['hourly_savings']
 
         recommendations['best_recommendation'] = best
+
+        # Update action and reason based on what we found
+        if not best and recommendations.get('same_family_note'):
+            # No cost savings possible, but we have an explanation
+            recommendations['action'] = 'optimal_for_workload'
+            recommendations['reason'] = (
+                f"{sizing_status['label']} by utilization, but current instance is the "
+                f"smallest in the {current_family} family that meets memory requirements. "
+                f"Consider if peak usage patterns justify current sizing."
+            )
+        elif not best:
+            # No recommendations found at all
+            recommendations['action'] = 'none'
+            recommendations['reason'] = 'No cost-saving alternatives found that meet workload requirements.'
 
         return recommendations
 

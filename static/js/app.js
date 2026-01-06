@@ -435,12 +435,39 @@ function renderRecommendations(recommendations) {
         `;
     }
 
-    let html = '<div class="row g-3">';
+    if (recommendations.action === 'optimal_for_workload') {
+        return `
+            <div class="info-box">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Optimal for workload.</strong> ${recommendations.reason}
+            </div>
+            ${recommendations.required_vcpus && recommendations.required_memory_gb ? `
+                <div class="mt-3 small text-muted">
+                    <i class="bi bi-calculator me-1"></i>
+                    Calculated requirements with 20% headroom: ${recommendations.required_vcpus} vCPUs, ${recommendations.required_memory_gb} GB RAM
+                </div>
+            ` : ''}
+        `;
+    }
+
+    let html = '';
+
+    // Show same-family note if no smaller option available
+    if (recommendations.same_family_note && !recommendations.same_family) {
+        html += `
+            <div class="info-box mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Same Family:</strong> ${recommendations.same_family_note}
+            </div>
+        `;
+    }
+
+    html += '<div class="row g-3">';
 
     // Same family recommendation
     if (recommendations.same_family) {
         const rec = recommendations.same_family;
-        const isBest = recommendations.best_recommendation === rec;
+        const isBest = recommendations.best_recommendation?.instance_type === rec.instance_type;
         html += `
             <div class="col-md-6">
                 <div class="recommendation-card ${isBest ? 'best' : ''}">
@@ -469,10 +496,45 @@ function renderRecommendations(recommendations) {
         `;
     }
 
+    // Cheaper alternative (same size, different family - e.g., r6g.4xlarge vs r7g.4xlarge)
+    if (recommendations.cheaper_alternative) {
+        const rec = recommendations.cheaper_alternative;
+        const isBest = recommendations.best_recommendation?.instance_type === rec.instance_type;
+        html += `
+            <div class="col-md-6">
+                <div class="recommendation-card ${isBest ? 'best' : ''}">
+                    <div class="recommendation-header">
+                        <span class="recommendation-type">Cheaper Alternative (${rec.family})</span>
+                        ${isBest ? '<span class="recommendation-badge">Best Option</span>' : ''}
+                    </div>
+                    <div class="recommendation-instance">${rec.instance_type}</div>
+                    <div class="recommendation-specs">
+                        ${rec.vcpus} vCPU, ${rec.memory_gb} GB RAM
+                        <br>$${rec.price_per_hour.toFixed(4)}/hr per instance
+                        <br><span class="badge bg-light text-dark">${rec.category}</span>
+                        ${rec.note ? `<br><small class="text-muted">${rec.note}</small>` : ''}
+                    </div>
+                    ${rec.savings ? `
+                        <div class="recommendation-savings">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="savings-value">-$${rec.savings.monthly_savings.toLocaleString()}/mo</div>
+                                    <div class="small text-muted">$${rec.savings.hourly_savings.toFixed(4)}/hr</div>
+                                </div>
+                                <div class="savings-percent">${rec.savings.savings_percent}% savings</div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
     // Cross family recommendation
-    if (recommendations.cross_family) {
+    if (recommendations.cross_family &&
+        recommendations.cross_family.instance_type !== recommendations.cheaper_alternative?.instance_type) {
         const rec = recommendations.cross_family;
-        const isBest = recommendations.best_recommendation === rec && !recommendations.same_family;
+        const isBest = recommendations.best_recommendation?.instance_type === rec.instance_type;
         html += `
             <div class="col-md-6">
                 <div class="recommendation-card ${isBest ? 'best' : ''}">
@@ -502,17 +564,20 @@ function renderRecommendations(recommendations) {
         `;
     }
 
-    // Category optimized recommendation (if different from cross_family)
+    // Category optimized recommendation (if different from others)
     if (recommendations.category_optimized &&
-        recommendations.category_optimized.instance_type !== recommendations.cross_family?.instance_type) {
+        recommendations.category_optimized.instance_type !== recommendations.cross_family?.instance_type &&
+        recommendations.category_optimized.instance_type !== recommendations.cheaper_alternative?.instance_type) {
         const rec = recommendations.category_optimized;
+        const isBest = recommendations.best_recommendation?.instance_type === rec.instance_type;
         html += `
             <div class="col-md-6">
-                <div class="recommendation-card">
+                <div class="recommendation-card ${isBest ? 'best' : ''}">
                     <div class="recommendation-header">
                         <span class="recommendation-type">
                             Optimized for ${formatWorkloadProfile(rec.workload_profile)}
                         </span>
+                        ${isBest ? '<span class="recommendation-badge">Best Option</span>' : ''}
                     </div>
                     <div class="recommendation-instance">${rec.instance_type}</div>
                     <div class="recommendation-specs">
