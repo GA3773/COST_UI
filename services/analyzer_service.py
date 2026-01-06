@@ -3,7 +3,7 @@ Analyzer Service for utilization analysis and recommendations
 """
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from dateutil import parser as date_parser
 from typing import Dict, List, Optional
 import config
@@ -25,10 +25,15 @@ class AnalyzerService:
         """Ensure data directory exists"""
         os.makedirs(config.DATA_DIR, exist_ok=True)
 
-    def analyze_cluster(self, cluster_id: str) -> Dict:
+    def analyze_cluster(self, cluster_id: str, lookback_hours: int = None) -> Dict:
         """
         Perform full analysis on a cluster.
         Returns detailed metrics, sizing status, and recommendations.
+
+        Args:
+            cluster_id: EMR cluster ID
+            lookback_hours: Number of hours to look back for metrics.
+                           If None, uses default from config.
         """
         # Get cluster details
         cluster = self.emr_service.get_cluster_by_id(cluster_id)
@@ -38,11 +43,24 @@ class AnalyzerService:
         # Parse cluster creation time
         created_time = date_parser.parse(cluster['created_time'])
 
-        # Calculate lookback time
-        start_time = self.cloudwatch_service.calculate_lookback_time(
-            cluster['cluster_type'],
-            created_time
-        )
+        # Calculate lookback time based on provided hours or default
+        if lookback_hours:
+            now = datetime.now(timezone.utc)
+            max_lookback = now - timedelta(hours=lookback_hours)
+            # Don't look back further than cluster creation
+            if created_time.tzinfo is None:
+                created_time = created_time.replace(tzinfo=timezone.utc)
+            start_time = max(created_time, max_lookback)
+        else:
+            # Use the automatic calculation based on cluster type
+            start_time = self.cloudwatch_service.calculate_lookback_time(
+                cluster['cluster_type'],
+                created_time
+            )
+
+        # Calculate actual lookback hours for display
+        now = datetime.now(timezone.utc)
+        actual_lookback_hours = round((now - start_time).total_seconds() / 3600, 1)
 
         # Analyze each instance group (CORE and TASK only, skip MASTER)
         node_analyses = {}
@@ -68,6 +86,8 @@ class AnalyzerService:
             'cluster_type': cluster['cluster_type'],
             'runtime_hours': cluster['runtime_hours'],
             'analyzed_at': datetime.now(timezone.utc).isoformat(),
+            'lookback_hours': actual_lookback_hours,
+            'requested_lookback_hours': lookback_hours or config.DEFAULT_LOOKBACK_HOURS,
             'analysis_period': {
                 'start': start_time.isoformat(),
                 'end': datetime.now(timezone.utc).isoformat()

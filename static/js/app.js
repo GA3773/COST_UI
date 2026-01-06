@@ -6,12 +6,46 @@
 let clustersData = null;
 let analysisModal = null;
 let totalPotentialSavings = 0;
+let lookbackOptions = [];
+let defaultLookbackHours = 72;
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     analysisModal = new bootstrap.Modal(document.getElementById('analysisModal'));
+
+    // Load lookback options
+    await loadLookbackOptions();
+
+    // Load clusters
     refreshClusters();
 });
+
+/**
+ * Load lookback period options from API
+ */
+async function loadLookbackOptions() {
+    try {
+        const response = await fetch('/api/config/lookback-options');
+        const result = await response.json();
+        if (result.success) {
+            lookbackOptions = result.data.options;
+            defaultLookbackHours = result.data.default_hours;
+        }
+    } catch (error) {
+        console.error('Failed to load lookback options:', error);
+        // Use defaults
+        lookbackOptions = [
+            { label: 'Last 1 hour', hours: 1 },
+            { label: 'Last 3 hours', hours: 3 },
+            { label: 'Last 6 hours', hours: 6 },
+            { label: 'Last 12 hours', hours: 12 },
+            { label: 'Last 24 hours', hours: 24 },
+            { label: 'Last 3 days', hours: 72 },
+            { label: 'Last 7 days', hours: 168 },
+        ];
+        defaultLookbackHours = 72;
+    }
+}
 
 /**
  * Refresh clusters list
@@ -96,6 +130,11 @@ function createClusterCard(cluster) {
     const statusClass = cluster.state.toLowerCase();
     const fleetBadge = cluster.uses_fleets ? '<span class="badge bg-secondary ms-2">Fleet</span>' : '';
 
+    // Generate lookback options dropdown
+    const lookbackOptionsHtml = lookbackOptions.map(opt =>
+        `<option value="${opt.hours}" ${opt.hours === defaultLookbackHours ? 'selected' : ''}>${opt.label}</option>`
+    ).join('');
+
     return `
         <div class="cluster-item" data-cluster-id="${cluster.id}">
             <div class="d-flex justify-content-between align-items-start">
@@ -124,11 +163,17 @@ function createClusterCard(cluster) {
                         ${instanceGroups}
                     </div>
                 </div>
-                <div class="cluster-actions">
-                    <button class="btn btn-primary btn-analyze" onclick="analyzeCluster('${cluster.id}')">
-                        <i class="bi bi-graph-up me-1"></i>
-                        Analyze Utilization
-                    </button>
+                <div class="cluster-actions d-flex flex-column gap-2 align-items-end">
+                    <div class="d-flex align-items-center gap-2">
+                        <select class="form-select form-select-sm lookback-select" id="lookback-${cluster.id}" style="width: auto;">
+                            ${lookbackOptionsHtml}
+                        </select>
+                        <button class="btn btn-primary btn-analyze" onclick="analyzeCluster('${cluster.id}')">
+                            <i class="bi bi-graph-up me-1"></i>
+                            Analyze
+                        </button>
+                    </div>
+                    <small class="text-muted">Analysis period</small>
                 </div>
             </div>
         </div>
@@ -142,17 +187,25 @@ async function analyzeCluster(clusterId) {
     const button = document.querySelector(`[data-cluster-id="${clusterId}"] .btn-analyze`);
     const originalContent = button.innerHTML;
 
+    // Get selected lookback hours
+    const lookbackSelect = document.getElementById(`lookback-${clusterId}`);
+    const lookbackHours = lookbackSelect ? parseInt(lookbackSelect.value) : defaultLookbackHours;
+
     // Update button state
     button.classList.add('analyzing');
     button.innerHTML = '<span class="analysis-spinner me-1"></span>Analyzing...';
 
     // Show modal with loading state
-    showAnalysisLoading(clusterId);
+    showAnalysisLoading(clusterId, lookbackHours);
     analysisModal.show();
 
     try {
         const response = await fetch(`/api/clusters/${clusterId}/analyze`, {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ lookback_hours: lookbackHours })
         });
         const result = await response.json();
 
@@ -174,8 +227,10 @@ async function analyzeCluster(clusterId) {
 /**
  * Show analysis loading state in modal
  */
-function showAnalysisLoading(clusterId) {
+function showAnalysisLoading(clusterId, lookbackHours) {
     const cluster = findCluster(clusterId);
+    const lookbackLabel = lookbackOptions.find(o => o.hours === lookbackHours)?.label || `Last ${lookbackHours} hours`;
+
     document.getElementById('analysisModalLabel').innerHTML = `
         <i class="bi bi-graph-up me-2"></i>
         Analyzing: ${cluster ? escapeHtml(cluster.name) : clusterId}
@@ -186,7 +241,7 @@ function showAnalysisLoading(clusterId) {
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="mt-3 text-muted">Fetching CloudWatch metrics and analyzing utilization...</p>
+            <p class="mt-3 text-muted">Fetching CloudWatch metrics for <strong>${lookbackLabel}</strong>...</p>
             <p class="small text-muted">This may take a moment for clusters with many nodes.</p>
         </div>
     `;

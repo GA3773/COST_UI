@@ -4,6 +4,7 @@ EMR Cost Optimizer - Flask Application
 from flask import Flask, jsonify, render_template, request
 from services.emr_service import EMRService
 from services.analyzer_service import AnalyzerService
+import config
 
 app = Flask(__name__)
 
@@ -16,6 +17,18 @@ analyzer_service = AnalyzerService()
 def index():
     """Render the main dashboard"""
     return render_template('index.html')
+
+
+@app.route('/api/config/lookback-options', methods=['GET'])
+def get_lookback_options():
+    """Get available lookback period options"""
+    return jsonify({
+        'success': True,
+        'data': {
+            'options': config.LOOKBACK_OPTIONS,
+            'default_hours': config.DEFAULT_LOOKBACK_HOURS
+        }
+    })
 
 
 @app.route('/api/clusters', methods=['GET'])
@@ -79,9 +92,21 @@ def analyze_cluster(cluster_id):
     """
     Analyze a cluster's utilization and generate recommendations.
     This endpoint triggers the full analysis pipeline.
+
+    Query params:
+        lookback_hours: Number of hours to look back for metrics (default: from config)
     """
     try:
-        analysis = analyzer_service.analyze_cluster(cluster_id)
+        # Get lookback hours from request (query param or JSON body)
+        lookback_hours = None
+        if request.is_json and request.json:
+            lookback_hours = request.json.get('lookback_hours')
+        if not lookback_hours:
+            lookback_hours = request.args.get('lookback_hours', type=int)
+        if not lookback_hours:
+            lookback_hours = config.DEFAULT_LOOKBACK_HOURS
+
+        analysis = analyzer_service.analyze_cluster(cluster_id, lookback_hours=lookback_hours)
 
         if 'error' in analysis:
             return jsonify({

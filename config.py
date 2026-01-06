@@ -17,6 +17,19 @@ CLOUDWATCH_PERIOD_SECONDS = 300  # 5-minute resolution
 MAX_LOOKBACK_DAYS = 3  # Maximum lookback for long-running clusters
 TRANSIENT_LOOKBACK_HOURS = 4  # Lookback for transient clusters
 
+# Configurable lookback options (in hours) for the UI
+LOOKBACK_OPTIONS = [
+    {'label': 'Last 1 hour', 'hours': 1},
+    {'label': 'Last 3 hours', 'hours': 3},
+    {'label': 'Last 6 hours', 'hours': 6},
+    {'label': 'Last 12 hours', 'hours': 12},
+    {'label': 'Last 24 hours', 'hours': 24},
+    {'label': 'Last 3 days', 'hours': 72},
+    {'label': 'Last 7 days', 'hours': 168},
+    {'label': 'Last 14 days', 'hours': 336},
+]
+DEFAULT_LOOKBACK_HOURS = 72  # Default to 3 days
+
 # CloudWatch Namespaces and Metrics
 EC2_NAMESPACE = 'AWS/EC2'
 CWAGENT_NAMESPACE = 'CWAgent'
