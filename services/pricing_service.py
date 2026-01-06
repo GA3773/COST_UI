@@ -139,6 +139,62 @@ INSTANCE_DATA = {
     'd2.2xlarge': {'vcpus': 8, 'memory_gb': 61, 'price': 1.38, 'family': 'd2', 'generation': 2, 'category': 'storage'},
     'd2.4xlarge': {'vcpus': 16, 'memory_gb': 122, 'price': 2.76, 'family': 'd2', 'generation': 2, 'category': 'storage'},
     'd2.8xlarge': {'vcpus': 36, 'memory_gb': 244, 'price': 5.52, 'family': 'd2', 'generation': 2, 'category': 'storage'},
+
+    # ==================== GRAVITON (ARM) INSTANCES ====================
+
+    # General Purpose - M6g Family (Graviton2)
+    'm6g.large': {'vcpus': 2, 'memory_gb': 8, 'price': 0.077, 'family': 'm6g', 'generation': 6, 'category': 'general'},
+    'm6g.xlarge': {'vcpus': 4, 'memory_gb': 16, 'price': 0.154, 'family': 'm6g', 'generation': 6, 'category': 'general'},
+    'm6g.2xlarge': {'vcpus': 8, 'memory_gb': 32, 'price': 0.308, 'family': 'm6g', 'generation': 6, 'category': 'general'},
+    'm6g.4xlarge': {'vcpus': 16, 'memory_gb': 64, 'price': 0.616, 'family': 'm6g', 'generation': 6, 'category': 'general'},
+    'm6g.8xlarge': {'vcpus': 32, 'memory_gb': 128, 'price': 1.232, 'family': 'm6g', 'generation': 6, 'category': 'general'},
+    'm6g.12xlarge': {'vcpus': 48, 'memory_gb': 192, 'price': 1.848, 'family': 'm6g', 'generation': 6, 'category': 'general'},
+    'm6g.16xlarge': {'vcpus': 64, 'memory_gb': 256, 'price': 2.464, 'family': 'm6g', 'generation': 6, 'category': 'general'},
+
+    # General Purpose - M7g Family (Graviton3)
+    'm7g.large': {'vcpus': 2, 'memory_gb': 8, 'price': 0.0816, 'family': 'm7g', 'generation': 7, 'category': 'general'},
+    'm7g.xlarge': {'vcpus': 4, 'memory_gb': 16, 'price': 0.1632, 'family': 'm7g', 'generation': 7, 'category': 'general'},
+    'm7g.2xlarge': {'vcpus': 8, 'memory_gb': 32, 'price': 0.3264, 'family': 'm7g', 'generation': 7, 'category': 'general'},
+    'm7g.4xlarge': {'vcpus': 16, 'memory_gb': 64, 'price': 0.6528, 'family': 'm7g', 'generation': 7, 'category': 'general'},
+    'm7g.8xlarge': {'vcpus': 32, 'memory_gb': 128, 'price': 1.3056, 'family': 'm7g', 'generation': 7, 'category': 'general'},
+    'm7g.12xlarge': {'vcpus': 48, 'memory_gb': 192, 'price': 1.9584, 'family': 'm7g', 'generation': 7, 'category': 'general'},
+    'm7g.16xlarge': {'vcpus': 64, 'memory_gb': 256, 'price': 2.6112, 'family': 'm7g', 'generation': 7, 'category': 'general'},
+
+    # Compute Optimized - C6g Family (Graviton2)
+    'c6g.large': {'vcpus': 2, 'memory_gb': 4, 'price': 0.068, 'family': 'c6g', 'generation': 6, 'category': 'compute'},
+    'c6g.xlarge': {'vcpus': 4, 'memory_gb': 8, 'price': 0.136, 'family': 'c6g', 'generation': 6, 'category': 'compute'},
+    'c6g.2xlarge': {'vcpus': 8, 'memory_gb': 16, 'price': 0.272, 'family': 'c6g', 'generation': 6, 'category': 'compute'},
+    'c6g.4xlarge': {'vcpus': 16, 'memory_gb': 32, 'price': 0.544, 'family': 'c6g', 'generation': 6, 'category': 'compute'},
+    'c6g.8xlarge': {'vcpus': 32, 'memory_gb': 64, 'price': 1.088, 'family': 'c6g', 'generation': 6, 'category': 'compute'},
+    'c6g.12xlarge': {'vcpus': 48, 'memory_gb': 96, 'price': 1.632, 'family': 'c6g', 'generation': 6, 'category': 'compute'},
+    'c6g.16xlarge': {'vcpus': 64, 'memory_gb': 128, 'price': 2.176, 'family': 'c6g', 'generation': 6, 'category': 'compute'},
+
+    # Compute Optimized - C7g Family (Graviton3)
+    'c7g.large': {'vcpus': 2, 'memory_gb': 4, 'price': 0.0725, 'family': 'c7g', 'generation': 7, 'category': 'compute'},
+    'c7g.xlarge': {'vcpus': 4, 'memory_gb': 8, 'price': 0.145, 'family': 'c7g', 'generation': 7, 'category': 'compute'},
+    'c7g.2xlarge': {'vcpus': 8, 'memory_gb': 16, 'price': 0.29, 'family': 'c7g', 'generation': 7, 'category': 'compute'},
+    'c7g.4xlarge': {'vcpus': 16, 'memory_gb': 32, 'price': 0.58, 'family': 'c7g', 'generation': 7, 'category': 'compute'},
+    'c7g.8xlarge': {'vcpus': 32, 'memory_gb': 64, 'price': 1.16, 'family': 'c7g', 'generation': 7, 'category': 'compute'},
+    'c7g.12xlarge': {'vcpus': 48, 'memory_gb': 96, 'price': 1.74, 'family': 'c7g', 'generation': 7, 'category': 'compute'},
+    'c7g.16xlarge': {'vcpus': 64, 'memory_gb': 128, 'price': 2.32, 'family': 'c7g', 'generation': 7, 'category': 'compute'},
+
+    # Memory Optimized - R6g Family (Graviton2)
+    'r6g.large': {'vcpus': 2, 'memory_gb': 16, 'price': 0.1008, 'family': 'r6g', 'generation': 6, 'category': 'memory'},
+    'r6g.xlarge': {'vcpus': 4, 'memory_gb': 32, 'price': 0.2016, 'family': 'r6g', 'generation': 6, 'category': 'memory'},
+    'r6g.2xlarge': {'vcpus': 8, 'memory_gb': 64, 'price': 0.4032, 'family': 'r6g', 'generation': 6, 'category': 'memory'},
+    'r6g.4xlarge': {'vcpus': 16, 'memory_gb': 128, 'price': 0.8064, 'family': 'r6g', 'generation': 6, 'category': 'memory'},
+    'r6g.8xlarge': {'vcpus': 32, 'memory_gb': 256, 'price': 1.6128, 'family': 'r6g', 'generation': 6, 'category': 'memory'},
+    'r6g.12xlarge': {'vcpus': 48, 'memory_gb': 384, 'price': 2.4192, 'family': 'r6g', 'generation': 6, 'category': 'memory'},
+    'r6g.16xlarge': {'vcpus': 64, 'memory_gb': 512, 'price': 3.2256, 'family': 'r6g', 'generation': 6, 'category': 'memory'},
+
+    # Memory Optimized - R7g Family (Graviton3)
+    'r7g.large': {'vcpus': 2, 'memory_gb': 16, 'price': 0.1071, 'family': 'r7g', 'generation': 7, 'category': 'memory'},
+    'r7g.xlarge': {'vcpus': 4, 'memory_gb': 32, 'price': 0.2142, 'family': 'r7g', 'generation': 7, 'category': 'memory'},
+    'r7g.2xlarge': {'vcpus': 8, 'memory_gb': 64, 'price': 0.4284, 'family': 'r7g', 'generation': 7, 'category': 'memory'},
+    'r7g.4xlarge': {'vcpus': 16, 'memory_gb': 128, 'price': 0.8568, 'family': 'r7g', 'generation': 7, 'category': 'memory'},
+    'r7g.8xlarge': {'vcpus': 32, 'memory_gb': 256, 'price': 1.7136, 'family': 'r7g', 'generation': 7, 'category': 'memory'},
+    'r7g.12xlarge': {'vcpus': 48, 'memory_gb': 384, 'price': 2.5704, 'family': 'r7g', 'generation': 7, 'category': 'memory'},
+    'r7g.16xlarge': {'vcpus': 64, 'memory_gb': 512, 'price': 3.4272, 'family': 'r7g', 'generation': 7, 'category': 'memory'},
 }
 
 
